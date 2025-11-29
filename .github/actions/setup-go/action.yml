@@ -1,0 +1,49 @@
+name: 'Setup Go with Aggressive Caching'
+description: 'Sets up Go with module and build caching for faster CI'
+author: 'False Systems'
+
+inputs:
+  go-version:
+    description: 'Go version to use'
+    required: false
+    default: '1.21'
+  cache-key-suffix:
+    description: 'Additional suffix for cache key (for cache busting)'
+    required: false
+    default: ''
+
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.go-cache.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go ${{ inputs.go-version }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false  # We handle caching ourselves for better control
+
+    - name: Cache Go modules and build cache
+      id: go-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-go-${{ inputs.go-version }}-
+          ${{ runner.os }}-go-
+
+    - name: Download Go modules
+      if: steps.go-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: go mod download
+
+branding:
+  icon: 'package'
+  color: 'blue'

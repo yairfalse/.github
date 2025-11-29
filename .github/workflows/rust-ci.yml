@@ -1,0 +1,100 @@
+name: Reusable Rust CI
+
+on:
+  workflow_call:
+    inputs:
+      rust-version:
+        description: 'Rust version to use'
+        required: false
+        type: string
+        default: 'stable'
+      run-integration-tests:
+        description: 'Whether to run integration tests with Kind'
+        required: false
+        type: boolean
+        default: false
+      install-gateway-api:
+        description: 'Whether to install Gateway API CRDs (for RAUTA)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # Parallel quality checks
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yairfalse/.github/.github/actions/setup-rust@main
+        with:
+          rust-version: ${{ inputs.rust-version }}
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yairfalse/.github/.github/actions/setup-rust@main
+        with:
+          rust-version: ${{ inputs.rust-version }}
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yairfalse/.github/.github/actions/setup-rust@main
+        with:
+          rust-version: ${{ inputs.rust-version }}
+      - name: Run tests
+        run: cargo test --all-features --verbose
+
+  integration:
+    name: Integration Tests
+    if: inputs.run-integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yairfalse/.github/.github/actions/setup-rust@main
+        with:
+          rust-version: ${{ inputs.rust-version }}
+      - uses: yairfalse/.github/.github/actions/setup-kind@main
+        with:
+          cluster-name: integration-test
+          install-gateway-api: ${{ inputs.install-gateway-api }}
+      - name: Run integration tests
+        run: cargo test --all-features -- --ignored
+      - name: Cleanup
+        if: always()
+        run: kind delete cluster --name integration-test
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yairfalse/.github/.github/actions/setup-rust@main
+        with:
+          rust-version: ${{ inputs.rust-version }}
+      - run: cargo install cargo-audit
+      - run: cargo audit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [format, clippy, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yairfalse/.github/.github/actions/setup-rust@main
+        with:
+          rust-version: ${{ inputs.rust-version }}
+      - name: Build release
+        run: cargo build --release --all-features
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: target/release/
+          retention-days: 7

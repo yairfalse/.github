@@ -1,0 +1,82 @@
+name: 'Setup Kind Cluster'
+description: 'Creates a Kind (Kubernetes in Docker) cluster for integration tests'
+author: 'False Systems'
+
+inputs:
+  cluster-name:
+    description: 'Name of the Kind cluster'
+    required: false
+    default: 'test-cluster'
+  node-count:
+    description: 'Number of worker nodes'
+    required: false
+    default: '1'
+  kubernetes-version:
+    description: 'Kubernetes version (e.g., v1.28.0)'
+    required: false
+    default: 'v1.28.0'
+  wait-timeout:
+    description: 'Time to wait for cluster to be ready'
+    required: false
+    default: '5m'
+  install-gateway-api:
+    description: 'Whether to install Gateway API CRDs'
+    required: false
+    default: 'false'
+
+outputs:
+  kubeconfig:
+    description: 'Path to kubeconfig file'
+    value: ${{ steps.kind-setup.outputs.kubeconfig }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Kind
+      shell: bash
+      run: |
+        if ! command -v kind &> /dev/null; then
+          echo "Installing Kind..."
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-$(uname)-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+        fi
+        kind version
+
+    - name: Create Kind cluster
+      id: kind-setup
+      shell: bash
+      run: |
+        cat > kind-config.yaml <<EOF
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+        - role: worker
+          replicas: ${{ inputs.node-count }}
+        EOF
+
+        kind create cluster \
+          --name ${{ inputs.cluster-name }} \
+          --config kind-config.yaml \
+          --image kindest/node:${{ inputs.kubernetes-version }} \
+          --wait ${{ inputs.wait-timeout }}
+
+        echo "kubeconfig=${KUBECONFIG:-$HOME/.kube/config}" >> $GITHUB_OUTPUT
+
+    - name: Install Gateway API CRDs
+      if: inputs.install-gateway-api == 'true'
+      shell: bash
+      run: |
+        kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/standard-install.yaml
+
+    - name: Verify cluster
+      shell: bash
+      run: |
+        kubectl cluster-info
+        kubectl get nodes
+        kubectl get pods -A
+
+branding:
+  icon: 'server'
+  color: 'purple'

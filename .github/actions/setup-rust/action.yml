@@ -1,0 +1,67 @@
+name: 'Setup Rust with Aggressive Caching'
+description: 'Sets up Rust with cargo and build caching for faster CI'
+author: 'False Systems'
+
+inputs:
+  rust-version:
+    description: 'Rust version to use (stable, nightly, 1.70.0, etc)'
+    required: false
+    default: 'stable'
+  components:
+    description: 'Additional components to install (clippy, rustfmt, etc)'
+    required: false
+    default: 'clippy,rustfmt'
+  cache-key-suffix:
+    description: 'Additional suffix for cache key (for cache busting)'
+    required: false
+    default: ''
+
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.rust-cache.outputs.cache-hit }}
+  rustc-version:
+    description: 'Installed Rust version'
+    value: ${{ steps.rustc-version.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.rust-version }}
+        components: ${{ inputs.components }}
+
+    - name: Get Rust version
+      id: rustc-version
+      shell: bash
+      run: echo "version=$(rustc --version)" >> $GITHUB_OUTPUT
+
+    - name: Cache Cargo registry and build artifacts
+      id: rust-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ inputs.rust-version }}-${{ hashFiles('**/Cargo.lock') }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ inputs.rust-version }}-${{ hashFiles('**/Cargo.lock') }}-
+          ${{ runner.os }}-cargo-${{ inputs.rust-version }}-
+          ${{ runner.os }}-cargo-
+
+    - name: Install cargo-binstall (for faster tool installation)
+      if: steps.rust-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if ! command -v cargo-binstall &> /dev/null; then
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+        fi
+
+branding:
+  icon: 'package'
+  color: 'orange'
