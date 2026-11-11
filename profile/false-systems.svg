@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" fill="none" role="img" aria-labelledby="t d">
+<title id="t">False Systems</title>
+<desc id="d">One piece of work, drawn as a circle, joined by a continuous line to four squares, one for each tool that works on it.</desc>
+<rect width="1200" height="360" fill="#f1ebdc"/>
+<g stroke="#171715" stroke-width="2">
+<path d="M40 40H56M48 32V48M1144 320H1160M1152 312V328"/>
+<path d="M64 286H560" stroke="#b9b3a5"/>
+<circle cx="786" cy="170" r="46" fill="#c75b36" stroke="none"/>
+<path d="M832 170H1130"/>
+<path d="M860 145H910V195H860Z" fill="#171715"/>
+<path d="M930 145H980V195H930Z" fill="#171715"/>
+<path d="M1000 145H1050V195H1000Z" fill="#d4aa4e"/>
+<path d="M1070 145H1120V195H1070Z" stroke-dasharray="6 8"/>
+<path d="M786 216V262M786 262H1120" stroke="#b9b3a5"/>
+</g>
+<text x="64" y="176" font-family="Geist, 'Helvetica Neue', Arial, sans-serif" font-size="88" font-weight="600" letter-spacing="-4" fill="#171715">False Systems</text>
+<text x="66" y="254" font-family="'Geist Mono', ui-monospace, Menlo, monospace" font-size="24" fill="#57594f">COMPUTING AS CRAFT.</text>
+</svg>
